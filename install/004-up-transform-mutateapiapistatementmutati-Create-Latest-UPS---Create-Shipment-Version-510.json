@@ -1,0 +1,741 @@
+{
+  "action": {
+    "up": {
+      "transform": "$mutate({\"api\":$api,\"statement\":'mutation($payload:[' & $type & 'CreatePayloadInput!]!){data:create' & $type & '(payload:$payload){id}}',\"variables\":{\"payload\":[$.{\"create\":$}]}}).data.id",
+      "bindings": {
+        "api": "application",
+        "type": "DataFlowVersion"
+      }
+    },
+    "down": {
+      "transform": "$",
+      "bindings": {}
+    }
+  },
+  "payload": [
+    {
+      "id": "cknja0u7h002w0j8r0rfp1vo6",
+      "number": "0.0.13",
+      "description": "",
+      "dataFlowId": "upsCreateShipment",
+      "flow": {
+        "id": "cknja0u7h002w0j8r0rfp1vo6",
+        "name": "UPS - Create Shipment",
+        "type": "Integration",
+        "nodes": [
+          {
+            "id": "6afe58dd-883d-4e5a-830d-9380b0871c7f",
+            "name": "Request",
+            "type": "request",
+            "data": {
+              "nextNodes": [
+                "362fc434-8840-402d-8044-b07df18b0d04"
+              ]
+            },
+            "debug": {
+              "breakpointEnabled": false
+            }
+          },
+          {
+            "id": "488643b6-56d3-4f6f-9e31-14d7467f067e",
+            "name": "Response",
+            "type": "response",
+            "data": {
+              "responseTransform": "$"
+            },
+            "debug": {
+              "breakpointEnabled": false
+            }
+          },
+          {
+            "id": "362fc434-8840-402d-8044-b07df18b0d04",
+            "name": "Set Context",
+            "type": "setContext",
+            "data": {
+              "nextNodes": [
+                "2c27fd91-ab8d-4191-ac10-1d47d648b93c"
+              ],
+              "transform": "{\n  \"parameters\": $\n}"
+            },
+            "debug": {
+              "breakpointEnabled": false
+            }
+          },
+          {
+            "id": "c3723b77-b6b7-436e-86cb-291130e8340c",
+            "name": "Create Shipment",
+            "type": "transform",
+            "data": {
+              "nextNodes": [
+                "b53ec65c-6251-49d7-b6d5-60ba54e2fb65"
+              ],
+              "transform": "$integrate({\n  \"request\": {\n    \"connectionId\": $state.context.parameters.connectionId,\n    \"options\": { \"returnErrors\": true },\n    \"payload\": [$state.context.request]\n  }\n}).request[0]",
+              "transformBehavior": "destructive"
+            },
+            "debug": {
+              "breakpointEnabled": false
+            }
+          },
+          {
+            "id": "b53ec65c-6251-49d7-b6d5-60ba54e2fb65",
+            "name": "Transform Response",
+            "type": "transform",
+            "data": {
+              "nextNodes": [
+                "488643b6-56d3-4f6f-9e31-14d7467f067e"
+              ],
+              "transform": "{\n  \"raw\": {\n    \"request\": $state.context.request,\n    \"response\": $\n  },\n  \"errors\": $isNilOrEmpty(Errors) ? undefined : [Errors.($omit($, [\"request\"]))],\n  \"error\": $not($isNilOrEmpty(Errors)),\n  \"request\": $state.context.parameters,\n  \"response\": ShipmentResponse.ShipmentResults.{\n    \"trackingNumber\": ShipmentIdentificationNumber,\n    \"charges\": $coalesce([NegotiatedRateCharges, ShipmentCharges]).{\n      /* For negotiated rates, the property is TotalCharge; for non-negotiated, it's TotalCharges. */\n      \"totalCharges\": $coalesce([TotalCharge, TotalCharges]).{\n        \"value\": $number(MonetaryValue),\n        /* TODO: Look up unit based on CurrencyCode */\n        \"unitId\": \"usDollar\"\n      }\n    },\n    \"packageLabels\": [PackageResults.{\n      \"trackingNumber\": TrackingNumber,\n      \"label\": ShippingLabel.{\n        \"data\": $base64decode(GraphicImage),\n        \"format\": ImageFormat.Code\n      }\n    }]\n  }\n}"
+            },
+            "debug": {
+              "breakpointEnabled": false
+            }
+          },
+          {
+            "id": "2c27fd91-ab8d-4191-ac10-1d47d648b93c",
+            "name": "Format Request",
+            "type": "mergeContext",
+            "data": {
+              "transform": "(\n  $formatAddress := function($address) {\n    {\n      \"AddressLine\": $address.lines,\n      \"City\": $address.city,\n      \"StateProvinceCode\": $address.state,\n      \"PostalCode\": $address.postalCode,\n      \"CountryCode\": $address.country,\n      \"ResidentialAddressIndicator\": $address.residential = true ? '' : undefined\n    }\n  };\n  \n  $formatPhone := function($phone) {\n    $not($isNilOrEmpty($phone)) ? {\n      /* Carrier expects just a bare number. */\n      \"Number\": $phone\n        ~> $split('')\n        ~> $filter(?, function($v) { $match($v, /\\d/) })\n        ~> $join('')\n    }\n  };\n  \n  $getWeightUnit := function($unit) {(\n    $unit := $uppercase($coalesce([$unit, 'LBS']));\n    \n    $unit = 'LB' or $unit = 'LBS'\n        ? 'LBS'\n      : $unit = 'KG' or $unit = 'KGS'\n        ? 'KGS'\n      : $unit\n  )};\n  \n  $getReferenceType := function($type) {\n    $type = 'serialNumber'\n      ? 'SE'\n      : $type = 'purchaseOrderNumber'\n        ? 'PO'\n        : 'TN'\n  };\n  \n  $shipment := $state.context.parameters.shipment;\n  $shipperAccount := $shipment.integratedCarrierConnectionConfiguration.shipperIntegratedCarrierAccount;\n  \n  $shipFrom := $coalesce([$shipment.shipFrom, $shipperAccount]);\n  \n  $shipTo := $shipment.shipTo;\n  \n  $billToAccount := $shipment.integratedCarrierBillToAccount;\n  \n  $service := $shipment.integratedCarrierService;\n  \n  $packages := $shipment.packageDefinitions;\n  \n  {\n    \"request\": {\n      \"action\": \"POST\",\n      \"path\": \"/ship/v1/shipments\",\n      \"version\": \"v1\", \n      \"data\": {    \n        \"ShipmentRequest\": {\n          \"LabelSpecification\": {\n            \"LabelImageFormat\": {\n              \"Code\": \"ZPL\" /* Valid options: EPL; SPL; ZPL; GIF; STARPL */\n            },\n            \"LabelStockSize\": {\n              \"Height\": \"6\", /* Only valid values are 6 and 8; 8 would be used for labels with doctabs (?) */\n              \"Width\": \"4\" /* Only valid value is 4 */\n            }\n          },\n          \"Shipment\": {\n            \"Description\": $shipment.description,\n            \"Shipper\": $shipperAccount.{\n              \"Name\": name,\n              \"Phone\": $formatPhone(phoneNumber),\n              \"ShipperNumber\": accountNumber,\n              \"Address\": $formatAddress(address)\n            },\n            \"ShipFrom\": $shipFrom.{\n              \"Name\": name,\n              \"Phone\": $formatPhone(phoneNumber),\n              \"Address\": $formatAddress(address)\n            },\n            \"ShipTo\": $shipTo.{\n              \"Name\": name,\n              \"Phone\": $formatPhone(phoneNumber),\n              \"Address\": $formatAddress(address)\n            },\n            \"PaymentInformation\": {\n              \"ShipmentCharge\": $billToAccount.{\n                \"Type\": \"01\", /* \"01\" = Transportation, \"02\" is Duties and Taxes (only valid for international shipments) */\n                integratedCarrierBillingType.code: {\n                  \"AccountNumber\": accountNumber,\n                  \"Address\": {\n                    \"PostalCode\": address.postalCode,\n                    \"CountryCode\": address.country\n                  }\n                }\n              }\n            },\n            \"Service\": $service.{\n              /* Code is required; Description is optional and not validated. */\n              \"Code\": code,\n              \"Description\": name\n            },\n            \"ShipmentRatingOptions\": {\n              \"NegotiatedRatesIndicator\": \"\"\n            },\n            /*  Shipment-level refernce numbers are used for shipments OTHER than US/US or PR/PR.\n                When we do international shipping, we'll pull the reference numbers off the first package.\n            \"ReferenceNumber\": $shipment.referenceNumbers.{\n              \"BarCodeIndicator\": barcode ? \"\",\n              \"Code\": type,\n              \"Value\": $string(value)\n            }, \n            */\n            \"Package\": [$packages.{\n              \"Description\": description,\n              \"Packaging\": {\n                /* 02 is \"customer supplied\"; other options are USPS flat-rate boxes, pallets, etc. */\n                \"Code\": \"02\"\n              },\n              \"Dimensions\": $isNilOrEmpty(dimensions) = false ? { \n                \"UnitOfMeasurement\": {\n                  /* IN = Inches CM = Centimeters 00 = Metric Units 01 = English Units     */\n                  \"Code\": dimensions.length.unit.code ? $uppercase(dimensions.length.unit.code) : \"IN\"\n                },\n                \"Length\": $string(dimensions.length.value),\n                \"Width\": $string(dimensions.width.value),\n                \"Height\": $string(dimensions.height.value)\n              },\n              \"PackageWeight\": {\n                \"UnitOfMeasurement\": {\n                  /* LBS = Pounds KG = Kilograms 00 = Metric Units 01 = English Units     */\n                  \"Code\": $getWeightUnit(weight.unit.code)\n                },\n                \"Weight\": $string(weight.value)\n              },\n              /*  Package-level refernce numbers are used for shipments from/to US/US or PR/PR. */\n              \"ReferenceNumber\": referenceNumbers#$i.{\n                \"BarCodeIndicator\": $i = 0 ? \"\",\n                /* Reference enum table */\n                \"Code\": $getReferenceType(type),\n                \"Value\": $string(value)\n              }\n            }]\n          }\n        }\n      }\n    }\n  }\n)",
+              "nextNodes": [
+                "c3723b77-b6b7-436e-86cb-291130e8340c"
+              ]
+            },
+            "debug": {
+              "breakpointEnabled": false
+            }
+          }
+        ],
+        "version": "0.0.14"
+      },
+      "diagram": {
+        "id": "cknja0u7h002w0j8r0rfp1vo6",
+        "offsetX": 148.17,
+        "offsetY": 136.96,
+        "zoom": 91.68,
+        "gridSize": 5,
+        "layers": [
+          {
+            "id": "85c1d030-9aa7-4919-8e6b-4e9994f71880",
+            "type": "diagram-links",
+            "isSvg": true,
+            "transformed": true,
+            "models": {
+              "e995e629-af64-4d52-a93b-e276d0effbac": {
+                "points": [
+                  {
+                    "id": "cbe844b5-6be6-414f-b06e-3c50ce13ae9c",
+                    "type": "point",
+                    "x": 213.98,
+                    "y": 154.5
+                  },
+                  {
+                    "id": "97ae9bf9-49c3-4b08-9a64-bfe201a0f751",
+                    "type": "point",
+                    "x": 280,
+                    "y": 209.5
+                  }
+                ],
+                "id": "e995e629-af64-4d52-a93b-e276d0effbac",
+                "type": "default",
+                "selected": false,
+                "source": "a67f57f2-fb7d-46cd-8406-580ff2cb657f",
+                "sourcePort": "ckmxua4dq00053a64muqxkv1g",
+                "target": "362fc434-8840-402d-8044-b07df18b0d04",
+                "targetPort": "ckmxuc4z5000t3a64tyw5bt82",
+                "labels": [],
+                "width": 3,
+                "curvyness": 50
+              },
+              "3c008e22-354e-4c2a-bb9a-c9a57e76e37b": {
+                "points": [
+                  {
+                    "id": "1ee76610-35eb-4ced-9dfa-79d92cb2254d",
+                    "type": "point",
+                    "x": 214,
+                    "y": 264.5
+                  },
+                  {
+                    "id": "23038d6f-0995-480d-bf05-923cafd69228",
+                    "type": "point",
+                    "x": 280,
+                    "y": 209.5
+                  }
+                ],
+                "id": "3c008e22-354e-4c2a-bb9a-c9a57e76e37b",
+                "type": "default",
+                "selected": false,
+                "source": "6afe58dd-883d-4e5a-830d-9380b0871c7f",
+                "sourcePort": "ckmxua62v00073a64x8vspgmj",
+                "target": "362fc434-8840-402d-8044-b07df18b0d04",
+                "targetPort": "ckmxuc4z5000t3a64tyw5bt82",
+                "labels": [],
+                "width": 3,
+                "curvyness": 50
+              },
+              "36261960-efbb-4cdd-973d-a6d8f9d1ccef": {
+                "points": [
+                  {
+                    "id": "e1ce72a9-57e5-4460-b563-882a967e89ca",
+                    "type": "point",
+                    "x": 1027.44,
+                    "y": 209.5
+                  },
+                  {
+                    "id": "ab1c1246-0d09-493a-9544-7e3bb11a0cbe",
+                    "type": "point",
+                    "x": 1065,
+                    "y": 209.5
+                  }
+                ],
+                "id": "36261960-efbb-4cdd-973d-a6d8f9d1ccef",
+                "type": "default",
+                "selected": false,
+                "source": "b53ec65c-6251-49d7-b6d5-60ba54e2fb65",
+                "sourcePort": "ckn0glwqy006o3a64f5bf21p5",
+                "target": "488643b6-56d3-4f6f-9e31-14d7467f067e",
+                "targetPort": "ckmxua6m900093a64y2b6t9ut",
+                "labels": [],
+                "width": 3,
+                "curvyness": 50
+              },
+              "9abb3fa9-a518-4281-9d41-10e15d3210b2": {
+                "points": [
+                  {
+                    "id": "10354234-2f3e-41c9-b03b-7d157c73b20a",
+                    "type": "point",
+                    "x": 834,
+                    "y": 209.5
+                  },
+                  {
+                    "id": "4e80179b-9d5e-4223-a778-35cffb31931a",
+                    "type": "point",
+                    "x": 870,
+                    "y": 209.5
+                  }
+                ],
+                "id": "9abb3fa9-a518-4281-9d41-10e15d3210b2",
+                "type": "default",
+                "selected": false,
+                "source": "c3723b77-b6b7-436e-86cb-291130e8340c",
+                "sourcePort": "ckmy2gru100353a64wvotqk38",
+                "target": "b53ec65c-6251-49d7-b6d5-60ba54e2fb65",
+                "targetPort": "ckn0glwqx006m3a64pzp1hjpu",
+                "labels": [],
+                "width": 3,
+                "curvyness": 50
+              },
+              "237952bb-4356-4ac1-88b7-b7ffe5d1aca9": {
+                "points": [
+                  {
+                    "id": "37a04949-31b8-4a3c-9e1b-e35f8d2e2344",
+                    "type": "point",
+                    "x": 434,
+                    "y": 209.5
+                  },
+                  {
+                    "id": "47c1e2e8-b439-4afb-8ec2-9ed0a3dd9af6",
+                    "type": "point",
+                    "x": 480,
+                    "y": 209.5
+                  }
+                ],
+                "id": "237952bb-4356-4ac1-88b7-b7ffe5d1aca9",
+                "type": "default",
+                "selected": false,
+                "source": "362fc434-8840-402d-8044-b07df18b0d04",
+                "sourcePort": "ckmxuc4z6000v3a64858qdu88",
+                "target": "2c27fd91-ab8d-4191-ac10-1d47d648b93c",
+                "targetPort": "ckn0hj3af006q3a64rpret202",
+                "labels": [],
+                "width": 3,
+                "curvyness": 50
+              },
+              "7e551c53-a210-46dd-ad7a-85c1c5cafc9c": {
+                "points": [
+                  {
+                    "id": "c990303f-6288-42ae-9f10-4ea6aceefa91",
+                    "type": "point",
+                    "x": 634,
+                    "y": 209.5
+                  },
+                  {
+                    "id": "3949f98b-fca2-4e00-ba6f-aa2ddca75663",
+                    "type": "point",
+                    "x": 680,
+                    "y": 209.5
+                  }
+                ],
+                "id": "7e551c53-a210-46dd-ad7a-85c1c5cafc9c",
+                "type": "default",
+                "selected": false,
+                "source": "2c27fd91-ab8d-4191-ac10-1d47d648b93c",
+                "sourcePort": "ckn0hj3ag006s3a64njbannnz",
+                "target": "c3723b77-b6b7-436e-86cb-291130e8340c",
+                "targetPort": "ckmy2gru100333a645xm17zir",
+                "labels": [],
+                "width": 3,
+                "curvyness": 50
+              }
+            }
+          },
+          {
+            "id": "15f8991d-c5ba-41ab-9047-efb2742bd522",
+            "type": "diagram-nodes",
+            "isSvg": false,
+            "transformed": true,
+            "models": {
+              "a67f57f2-fb7d-46cd-8406-580ff2cb657f": {
+                "id": "a67f57f2-fb7d-46cd-8406-580ff2cb657f",
+                "type": "debugSource",
+                "selected": true,
+                "x": 60,
+                "y": 115,
+                "ports": [
+                  {
+                    "id": "ckmxua4dq00053a64muqxkv1g",
+                    "type": "default",
+                    "x": 205.98,
+                    "y": 146.5,
+                    "name": "ckmxua4dr00063a64bzl3nmdw",
+                    "parentNode": "a67f57f2-fb7d-46cd-8406-580ff2cb657f",
+                    "links": [
+                      "e995e629-af64-4d52-a93b-e276d0effbac"
+                    ],
+                    "in": false,
+                    "groupIndex": null,
+                    "groupPath": null,
+                    "fieldLabel": "Output",
+                    "fieldPath": "data.nextNodes"
+                  }
+                ],
+                "data": {
+                  "payload": {
+                    "connectionId": "ckmwk6rw0007q0i6g0zkeb9l3",
+                    "shipment": {
+                      "id": "ckn6dfaru00690i5e99i3ewwo",
+                      "number": "Test",
+                      "shipTo": {
+                        "name": "Lance Menard",
+                        "residential": true,
+                        "address": {
+                          "lines": [
+                            "8579 22 Mile Rd."
+                          ],
+                          "city": "Shelby Township",
+                          "state": "MI",
+                          "postalCode": "48317",
+                          "country": "US"
+                        }
+                      },
+                      "shipFrom": {
+                        "name": "Cumulus Consulting",
+                        "phoneNumber": "(248) 845-4612",
+                        "address": {
+                          "lines": [
+                            "5877 John R. Rd."
+                          ],
+                          "city": "Troy",
+                          "state": "MI",
+                          "postalCode": "48098",
+                          "country": "US"
+                        }
+                      },
+                      "packageDefinitions": [
+                        {
+                          "weight": {
+                            "value": 5
+                          },
+                          "dimensions": {
+                            "length": {
+                              "value": 12
+                            },
+                            "width": {
+                              "value": 8
+                            },
+                            "height": {
+                              "value": 5
+                            }
+                          },
+                          "referenceNumbers": [
+                            {
+                              "type": "serialNumber",
+                              "value": "S000012"
+                            },
+                            {
+                              "type": "purchaseOrderNumber",
+                              "value": "19167R3"
+                            }
+                          ]
+                        },
+                        {
+                          "weight": {
+                            "value": 5
+                          },
+                          "dimensions": {
+                            "length": {
+                              "value": 12
+                            },
+                            "width": {
+                              "value": 8
+                            },
+                            "height": {
+                              "value": 5
+                            }
+                          }
+                        }
+                      ],
+                      "trackingNumber": "",
+                      "integratedCarrierConnectionConfiguration": {
+                        "id": "ckmxyiwta000q0i2zba479uqe",
+                        "name": "Cumulus UPS",
+                        "productionConnectionId": "ckmwk7xdi007r0i6gd05z0j6y",
+                        "sandboxConnectionId": "ckmwk6rw0007q0i6g0zkeb9l3",
+                        "shipperIntegratedCarrierAccount": {
+                          "name": "Cumulus UPS",
+                          "accountNumber": "",
+                          "meterNumber": "",
+                          "phoneNumber": "2488454612",
+                          "integratedCarrierBillingType": {
+                            "name": "Shipper",
+                            "code": "BillShipper"
+                          },
+                          "address": {
+                            "lines": [
+                              "5877 John R. Rd."
+                            ],
+                            "city": "Troy",
+                            "state": "MI",
+                            "postalCode": "48098",
+                            "country": "US"
+                          }
+                        }
+                      },
+                      "integratedCarrierService": {
+                        "id": "ckmxv51ra000s0j7j2o052mzz",
+                        "name": "UPS Ground",
+                        "code": "03"
+                      },
+                      "integratedCarrierBillToAccount": {
+                        "name": "Cumulus UPS",
+                        "accountNumber": "",
+                        "meterNumber": "",
+                        "phoneNumber": "2488454612",
+                        "integratedCarrierBillingType": {
+                          "name": "Shipper",
+                          "code": "BillShipper"
+                        },
+                        "address": {
+                          "lines": [
+                            "5877 John R. Rd."
+                          ],
+                          "city": "Troy",
+                          "state": "MI",
+                          "postalCode": "48098",
+                          "country": "US"
+                        }
+                      },
+                      "integratedCarrier": {
+                        "id": "ckmwk8fv600010i4sgvetax0g",
+                        "name": "UPS",
+                        "requestFlows": {
+                          "edges": [
+                            {
+                              "node": {
+                                "dataFlowId": "upsCreateShipment"
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "nextNodes": [
+                    "362fc434-8840-402d-8044-b07df18b0d04"
+                  ]
+                },
+                "debug": {
+                  "breakpointEnabled": false
+                },
+                "name": "Source"
+              },
+              "6afe58dd-883d-4e5a-830d-9380b0871c7f": {
+                "id": "6afe58dd-883d-4e5a-830d-9380b0871c7f",
+                "type": "request",
+                "selected": false,
+                "x": 60,
+                "y": 225,
+                "ports": [
+                  {
+                    "id": "ckmxua62v00073a64x8vspgmj",
+                    "type": "default",
+                    "x": 206,
+                    "y": 256.5,
+                    "name": "ckmxua62v00083a641j3hfi1q",
+                    "parentNode": "6afe58dd-883d-4e5a-830d-9380b0871c7f",
+                    "links": [
+                      "3c008e22-354e-4c2a-bb9a-c9a57e76e37b"
+                    ],
+                    "in": false,
+                    "groupIndex": null,
+                    "groupPath": null,
+                    "fieldLabel": "Payload",
+                    "fieldPath": "data.nextNodes"
+                  }
+                ],
+                "data": {
+                  "nextNodes": [
+                    "362fc434-8840-402d-8044-b07df18b0d04"
+                  ]
+                },
+                "debug": {
+                  "breakpointEnabled": false
+                },
+                "name": "Request"
+              },
+              "488643b6-56d3-4f6f-9e31-14d7467f067e": {
+                "id": "488643b6-56d3-4f6f-9e31-14d7467f067e",
+                "type": "response",
+                "selected": false,
+                "x": 1065,
+                "y": 170,
+                "ports": [
+                  {
+                    "id": "ckmxua6m900093a64y2b6t9ut",
+                    "type": "default",
+                    "x": 1057,
+                    "y": 201.5,
+                    "name": "ckmxua6m9000a3a645k6los29",
+                    "parentNode": "488643b6-56d3-4f6f-9e31-14d7467f067e",
+                    "links": [
+                      "36261960-efbb-4cdd-973d-a6d8f9d1ccef"
+                    ],
+                    "in": true,
+                    "fieldLabel": "Response"
+                  },
+                  {
+                    "id": "ckmxua6m9000b3a64svmv6ycf",
+                    "type": "default",
+                    "x": 1210.98,
+                    "y": 201.5,
+                    "name": "ckmxua6m9000c3a645ahnwfhj",
+                    "parentNode": "488643b6-56d3-4f6f-9e31-14d7467f067e",
+                    "links": [],
+                    "in": false,
+                    "groupIndex": null,
+                    "groupPath": null,
+                    "fieldLabel": "Output",
+                    "fieldPath": "data.nextNodes"
+                  }
+                ],
+                "data": {
+                  "responseTransform": "$"
+                },
+                "debug": {
+                  "breakpointEnabled": false
+                },
+                "name": "Response"
+              },
+              "362fc434-8840-402d-8044-b07df18b0d04": {
+                "id": "362fc434-8840-402d-8044-b07df18b0d04",
+                "type": "setContext",
+                "selected": false,
+                "x": 280,
+                "y": 170,
+                "ports": [
+                  {
+                    "id": "ckmxuc4z5000t3a64tyw5bt82",
+                    "type": "default",
+                    "x": 272,
+                    "y": 201.5,
+                    "name": "ckmxuc4z5000u3a64ji129bly",
+                    "parentNode": "362fc434-8840-402d-8044-b07df18b0d04",
+                    "links": [
+                      "e995e629-af64-4d52-a93b-e276d0effbac",
+                      "3c008e22-354e-4c2a-bb9a-c9a57e76e37b"
+                    ],
+                    "in": true
+                  },
+                  {
+                    "id": "ckmxuc4z6000v3a64858qdu88",
+                    "type": "default",
+                    "x": 426,
+                    "y": 201.5,
+                    "name": "ckmxuc4z6000w3a649xc6ozqg",
+                    "parentNode": "362fc434-8840-402d-8044-b07df18b0d04",
+                    "links": [
+                      "237952bb-4356-4ac1-88b7-b7ffe5d1aca9"
+                    ],
+                    "in": false,
+                    "groupIndex": null,
+                    "groupPath": null,
+                    "fieldLabel": "Output",
+                    "fieldPath": "data.nextNodes"
+                  }
+                ],
+                "data": {
+                  "nextNodes": [
+                    "2c27fd91-ab8d-4191-ac10-1d47d648b93c"
+                  ],
+                  "transform": "{\n  \"parameters\": $\n}"
+                },
+                "debug": {
+                  "breakpointEnabled": false
+                },
+                "name": "Set Context"
+              },
+              "c3723b77-b6b7-436e-86cb-291130e8340c": {
+                "id": "c3723b77-b6b7-436e-86cb-291130e8340c",
+                "type": "transform",
+                "selected": false,
+                "extras": {},
+                "x": 680,
+                "y": 170,
+                "ports": [
+                  {
+                    "id": "ckmy2gru100333a645xm17zir",
+                    "type": "default",
+                    "x": 672,
+                    "y": 201.5,
+                    "name": "ckmy2gru100343a64lo16sqio",
+                    "parentNode": "c3723b77-b6b7-436e-86cb-291130e8340c",
+                    "links": [
+                      "7e551c53-a210-46dd-ad7a-85c1c5cafc9c"
+                    ],
+                    "in": true
+                  },
+                  {
+                    "id": "ckmy2gru100353a64wvotqk38",
+                    "type": "default",
+                    "x": 826,
+                    "y": 201.5,
+                    "name": "ckmy2gru100363a64bv9my86f",
+                    "parentNode": "c3723b77-b6b7-436e-86cb-291130e8340c",
+                    "links": [
+                      "9abb3fa9-a518-4281-9d41-10e15d3210b2"
+                    ],
+                    "in": false,
+                    "groupIndex": null,
+                    "groupPath": null,
+                    "fieldLabel": "Output",
+                    "fieldPath": "data.nextNodes"
+                  }
+                ],
+                "data": {
+                  "nextNodes": [
+                    "b53ec65c-6251-49d7-b6d5-60ba54e2fb65"
+                  ],
+                  "transform": "$integrate({\n  \"request\": {\n    \"connectionId\": $state.context.parameters.connectionId,\n    \"options\": { \"returnErrors\": true },\n    \"payload\": [$state.context.request]\n  }\n}).request[0]",
+                  "transformBehavior": "destructive"
+                },
+                "debug": {
+                  "breakpointEnabled": false
+                },
+                "name": "Create Shipment",
+                "note": "Requires Deployment "
+              },
+              "b53ec65c-6251-49d7-b6d5-60ba54e2fb65": {
+                "id": "b53ec65c-6251-49d7-b6d5-60ba54e2fb65",
+                "type": "transform",
+                "selected": false,
+                "x": 870,
+                "y": 170,
+                "ports": [
+                  {
+                    "id": "ckn0glwqx006m3a64pzp1hjpu",
+                    "type": "default",
+                    "x": 862,
+                    "y": 201.5,
+                    "name": "ckn0glwqx006n3a64bcctbct4",
+                    "parentNode": "b53ec65c-6251-49d7-b6d5-60ba54e2fb65",
+                    "links": [
+                      "9abb3fa9-a518-4281-9d41-10e15d3210b2"
+                    ],
+                    "in": true
+                  },
+                  {
+                    "id": "ckn0glwqy006o3a64f5bf21p5",
+                    "type": "default",
+                    "x": 1019.44,
+                    "y": 201.5,
+                    "name": "ckn0glwqy006p3a64muzue2kr",
+                    "parentNode": "b53ec65c-6251-49d7-b6d5-60ba54e2fb65",
+                    "links": [
+                      "36261960-efbb-4cdd-973d-a6d8f9d1ccef"
+                    ],
+                    "in": false,
+                    "groupIndex": null,
+                    "groupPath": null,
+                    "fieldLabel": "Output",
+                    "fieldPath": "data.nextNodes"
+                  }
+                ],
+                "data": {
+                  "nextNodes": [
+                    "488643b6-56d3-4f6f-9e31-14d7467f067e"
+                  ],
+                  "transform": "{\n  \"raw\": {\n    \"request\": $state.context.request,\n    \"response\": $\n  },\n  \"errors\": $isNilOrEmpty(Errors) ? undefined : [Errors.($omit($, [\"request\"]))],\n  \"error\": $not($isNilOrEmpty(Errors)),\n  \"request\": $state.context.parameters,\n  \"response\": ShipmentResponse.ShipmentResults.{\n    \"trackingNumber\": ShipmentIdentificationNumber,\n    \"charges\": $coalesce([NegotiatedRateCharges, ShipmentCharges]).{\n      /* For negotiated rates, the property is TotalCharge; for non-negotiated, it's TotalCharges. */\n      \"totalCharges\": $coalesce([TotalCharge, TotalCharges]).{\n        \"value\": $number(MonetaryValue),\n        /* TODO: Look up unit based on CurrencyCode */\n        \"unitId\": \"usDollar\"\n      }\n    },\n    \"packageLabels\": [PackageResults.{\n      \"trackingNumber\": TrackingNumber,\n      \"label\": ShippingLabel.{\n        \"data\": $base64decode(GraphicImage),\n        \"format\": ImageFormat.Code\n      }\n    }]\n  }\n}"
+                },
+                "debug": {
+                  "breakpointEnabled": false
+                },
+                "name": "Transform Response"
+              },
+              "2c27fd91-ab8d-4191-ac10-1d47d648b93c": {
+                "id": "2c27fd91-ab8d-4191-ac10-1d47d648b93c",
+                "type": "mergeContext",
+                "selected": false,
+                "x": 480,
+                "y": 170,
+                "ports": [
+                  {
+                    "id": "ckn0hj3af006q3a64rpret202",
+                    "type": "default",
+                    "x": 472,
+                    "y": 201.5,
+                    "name": "ckn0hj3af006r3a64rjjd3g78",
+                    "parentNode": "2c27fd91-ab8d-4191-ac10-1d47d648b93c",
+                    "links": [
+                      "237952bb-4356-4ac1-88b7-b7ffe5d1aca9"
+                    ],
+                    "in": true
+                  },
+                  {
+                    "id": "ckn0hj3ag006s3a64njbannnz",
+                    "type": "default",
+                    "x": 626,
+                    "y": 201.5,
+                    "name": "ckn0hj3ag006t3a64wyp8kcrn",
+                    "parentNode": "2c27fd91-ab8d-4191-ac10-1d47d648b93c",
+                    "links": [
+                      "7e551c53-a210-46dd-ad7a-85c1c5cafc9c"
+                    ],
+                    "in": false,
+                    "groupIndex": null,
+                    "groupPath": null,
+                    "fieldLabel": "Output",
+                    "fieldPath": "data.nextNodes"
+                  }
+                ],
+                "data": {
+                  "transform": "(\n  $formatAddress := function($address) {\n    {\n      \"AddressLine\": $address.lines,\n      \"City\": $address.city,\n      \"StateProvinceCode\": $address.state,\n      \"PostalCode\": $address.postalCode,\n      \"CountryCode\": $address.country,\n      \"ResidentialAddressIndicator\": $address.residential = true ? '' : undefined\n    }\n  };\n  \n  $formatPhone := function($phone) {\n    $not($isNilOrEmpty($phone)) ? {\n      /* Carrier expects just a bare number. */\n      \"Number\": $phone\n        ~> $split('')\n        ~> $filter(?, function($v) { $match($v, /\\d/) })\n        ~> $join('')\n    }\n  };\n  \n  $getWeightUnit := function($unit) {(\n    $unit := $uppercase($coalesce([$unit, 'LBS']));\n    \n    $unit = 'LB' or $unit = 'LBS'\n        ? 'LBS'\n      : $unit = 'KG' or $unit = 'KGS'\n        ? 'KGS'\n      : $unit\n  )};\n  \n  $getReferenceType := function($type) {\n    $type = 'serialNumber'\n      ? 'SE'\n      : $type = 'purchaseOrderNumber'\n        ? 'PO'\n        : 'TN'\n  };\n  \n  $shipment := $state.context.parameters.shipment;\n  $shipperAccount := $shipment.integratedCarrierConnectionConfiguration.shipperIntegratedCarrierAccount;\n  \n  $shipFrom := $coalesce([$shipment.shipFrom, $shipperAccount]);\n  \n  $shipTo := $shipment.shipTo;\n  \n  $billToAccount := $shipment.integratedCarrierBillToAccount;\n  \n  $service := $shipment.integratedCarrierService;\n  \n  $packages := $shipment.packageDefinitions;\n  \n  {\n    \"request\": {\n      \"action\": \"POST\",\n      \"path\": \"/ship/v1/shipments\",\n      \"version\": \"v1\", \n      \"data\": {    \n        \"ShipmentRequest\": {\n          \"LabelSpecification\": {\n            \"LabelImageFormat\": {\n              \"Code\": \"ZPL\" /* Valid options: EPL; SPL; ZPL; GIF; STARPL */\n            },\n            \"LabelStockSize\": {\n              \"Height\": \"6\", /* Only valid values are 6 and 8; 8 would be used for labels with doctabs (?) */\n              \"Width\": \"4\" /* Only valid value is 4 */\n            }\n          },\n          \"Shipment\": {\n            \"Description\": $shipment.description,\n            \"Shipper\": $shipperAccount.{\n              \"Name\": name,\n              \"Phone\": $formatPhone(phoneNumber),\n              \"ShipperNumber\": accountNumber,\n              \"Address\": $formatAddress(address)\n            },\n            \"ShipFrom\": $shipFrom.{\n              \"Name\": name,\n              \"Phone\": $formatPhone(phoneNumber),\n              \"Address\": $formatAddress(address)\n            },\n            \"ShipTo\": $shipTo.{\n              \"Name\": name,\n              \"Phone\": $formatPhone(phoneNumber),\n              \"Address\": $formatAddress(address)\n            },\n            \"PaymentInformation\": {\n              \"ShipmentCharge\": $billToAccount.{\n                \"Type\": \"01\", /* \"01\" = Transportation, \"02\" is Duties and Taxes (only valid for international shipments) */\n                integratedCarrierBillingType.code: {\n                  \"AccountNumber\": accountNumber,\n                  \"Address\": {\n                    \"PostalCode\": address.postalCode,\n                    \"CountryCode\": address.country\n                  }\n                }\n              }\n            },\n            \"Service\": $service.{\n              /* Code is required; Description is optional and not validated. */\n              \"Code\": code,\n              \"Description\": name\n            },\n            \"ShipmentRatingOptions\": {\n              \"NegotiatedRatesIndicator\": \"\"\n            },\n            /*  Shipment-level refernce numbers are used for shipments OTHER than US/US or PR/PR.\n                When we do international shipping, we'll pull the reference numbers off the first package.\n            \"ReferenceNumber\": $shipment.referenceNumbers.{\n              \"BarCodeIndicator\": barcode ? \"\",\n              \"Code\": type,\n              \"Value\": $string(value)\n            }, \n            */\n            \"Package\": [$packages.{\n              \"Description\": description,\n              \"Packaging\": {\n                /* 02 is \"customer supplied\"; other options are USPS flat-rate boxes, pallets, etc. */\n                \"Code\": \"02\"\n              },\n              \"Dimensions\": $isNilOrEmpty(dimensions) = false ? { \n                \"UnitOfMeasurement\": {\n                  /* IN = Inches CM = Centimeters 00 = Metric Units 01 = English Units     */\n                  \"Code\": dimensions.length.unit.code ? $uppercase(dimensions.length.unit.code) : \"IN\"\n                },\n                \"Length\": $string(dimensions.length.value),\n                \"Width\": $string(dimensions.width.value),\n                \"Height\": $string(dimensions.height.value)\n              },\n              \"PackageWeight\": {\n                \"UnitOfMeasurement\": {\n                  /* LBS = Pounds KG = Kilograms 00 = Metric Units 01 = English Units     */\n                  \"Code\": $getWeightUnit(weight.unit.code)\n                },\n                \"Weight\": $string(weight.value)\n              },\n              /*  Package-level refernce numbers are used for shipments from/to US/US or PR/PR. */\n              \"ReferenceNumber\": referenceNumbers#$i.{\n                \"BarCodeIndicator\": $i = 0 ? \"\",\n                /* Reference enum table */\n                \"Code\": $getReferenceType(type),\n                \"Value\": $string(value)\n              }\n            }]\n          }\n        }\n      }\n    }\n  }\n)",
+                  "nextNodes": [
+                    "c3723b77-b6b7-436e-86cb-291130e8340c"
+                  ]
+                },
+                "debug": {
+                  "breakpointEnabled": false
+                },
+                "name": "Format Request"
+              }
+            }
+          }
+        ],
+        "name": "UPS - Create Shipment",
+        "type": "Integration",
+        "version": "0.0.14",
+        "walkthrough": {}
+      }
+    }
+  ],
+  "description": "Create Latest UPS - Create Shipment Version (5/10)"
+}

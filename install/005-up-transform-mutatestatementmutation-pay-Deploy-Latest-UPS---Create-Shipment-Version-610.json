@@ -1,0 +1,19 @@
+{
+  "action": {
+    "up": {
+      "transform": "$mutate({\"statement\":'mutation ($payload:[DeployDataFlowVersionPayloadInput!]!){deployDataFlowVersion(payload:$payload){id}}', \"variables\":{\"payload\":[$.{\"dataFlowVersionId\":id}]}})",
+      "bindings": {}
+    },
+    "down": {
+      "transform": "$",
+      "bindings": {}
+    }
+  },
+  "payload": [
+    {
+      "id": "cknja0u7h002w0j8r0rfp1vo6",
+      "dataFlowId": "upsCreateShipment"
+    }
+  ],
+  "description": "Deploy Latest UPS - Create Shipment Version (6/10)"
+}

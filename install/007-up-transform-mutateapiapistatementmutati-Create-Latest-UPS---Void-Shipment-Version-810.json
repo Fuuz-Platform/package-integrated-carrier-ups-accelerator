@@ -1,0 +1,604 @@
+{
+  "action": {
+    "up": {
+      "transform": "$mutate({\"api\":$api,\"statement\":'mutation($payload:[' & $type & 'CreatePayloadInput!]!){data:create' & $type & '(payload:$payload){id}}',\"variables\":{\"payload\":[$.{\"create\":$}]}}).data.id",
+      "bindings": {
+        "api": "application",
+        "type": "DataFlowVersion"
+      }
+    },
+    "down": {
+      "transform": "$",
+      "bindings": {}
+    }
+  },
+  "payload": [
+    {
+      "id": "ckn0qov8c000l0j394rnz2r4a",
+      "number": "0.0.1",
+      "description": "",
+      "dataFlowId": "upsVoidShipment",
+      "flow": {
+        "id": "ckn0qov8c000l0j394rnz2r4a",
+        "name": "UPS - Void Shipment",
+        "type": "Integration",
+        "nodes": [
+          {
+            "id": "e396e411-31c9-4cb5-b47b-01c8f860f308",
+            "name": "Request",
+            "type": "request",
+            "data": {
+              "nextNodes": [
+                "a4aa3ade-0451-4260-af38-752b0e16de28"
+              ]
+            },
+            "debug": {
+              "breakpointEnabled": false
+            }
+          },
+          {
+            "id": "820e33f8-8f20-430b-bb5f-e9b500c61072",
+            "name": "Response",
+            "type": "response",
+            "data": {
+              "responseTransform": "$",
+              "nextNodes": []
+            },
+            "debug": {
+              "breakpointEnabled": false
+            }
+          },
+          {
+            "id": "a4aa3ade-0451-4260-af38-752b0e16de28",
+            "name": "Set Context",
+            "type": "setContext",
+            "data": {
+              "nextNodes": [
+                "ff65551d-12ee-4759-9b51-8341fa15249d"
+              ],
+              "transform": "{\n  \"parameters\": $\n}"
+            },
+            "debug": {
+              "breakpointEnabled": false
+            }
+          },
+          {
+            "id": "de63c35e-405c-4eaf-a5ee-abceaa0b59db",
+            "name": "Void Shipment",
+            "type": "transform",
+            "data": {
+              "nextNodes": [
+                "631da8ee-c510-46ad-ad82-9a89260b99c6"
+              ],
+              "transform": "$integrate({\n  \"request\": {\n    \"connectionId\": $state.context.parameters.connectionId,\n    \"options\": { \"returnErrors\": true },\n    \"payload\": [$state.context.request]\n  }\n}).request[0]",
+              "transformBehavior": "destructive"
+            },
+            "debug": {
+              "breakpointEnabled": false
+            }
+          },
+          {
+            "id": "631da8ee-c510-46ad-ad82-9a89260b99c6",
+            "name": "Transform Response",
+            "type": "transform",
+            "data": {
+              "nextNodes": [
+                "820e33f8-8f20-430b-bb5f-e9b500c61072"
+              ],
+              "transform": "{\n  \"raw\": {\n    \"request\": $state.context.request,\n    \"response\": $\n  },\n  \"errors\": $isNilOrEmpty(Errors) ? undefined : [Errors.($omit($, [\"request\"]))],\n  \"error\": $not($isNilOrEmpty(Errors)),\n  \"request\": $state.context.parameters,\n  \"response\": {\n    \"success\": true\n  }\n}"
+            },
+            "debug": {
+              "breakpointEnabled": false
+            }
+          },
+          {
+            "id": "ff65551d-12ee-4759-9b51-8341fa15249d",
+            "name": "Format Request",
+            "type": "mergeContext",
+            "data": {
+              "transform": "{\n  \"request\": {\n    \"action\": \"DELETE\",\n    \"path\": \"/ship/v1/shipments/cancel/\" \n      /* UPS uses a dummy tracking number for testing the void shipment API against their CIE environment, since actual shipments aren't saved. */\n      & ($state.context.parameters.sandbox   \n        ? '1ZISDE016691676846' \n        : $state.context.parameters.shipment.trackingNumber),\n    \"version\": \"v1\"\n  }\n}\n",
+              "nextNodes": [
+                "de63c35e-405c-4eaf-a5ee-abceaa0b59db"
+              ]
+            },
+            "debug": {
+              "breakpointEnabled": false
+            }
+          }
+        ],
+        "version": "0.0.1"
+      },
+      "diagram": {
+        "id": "ckn0qov8c000l0j394rnz2r4a",
+        "offsetX": 87.3,
+        "offsetY": 64.15,
+        "zoom": 85,
+        "gridSize": 5,
+        "layers": [
+          {
+            "id": "fe4bd53b-dda2-4780-b831-1daaab6398c1",
+            "type": "diagram-links",
+            "isSvg": true,
+            "transformed": true,
+            "models": {
+              "5ac8f9b0-1e0c-4724-88eb-b6f62905841b": {
+                "points": [
+                  {
+                    "id": "62fb1927-8b9e-4f50-92ac-246e4d9e1672",
+                    "type": "point",
+                    "x": 263.98,
+                    "y": 204.5
+                  },
+                  {
+                    "id": "e7189d83-4f9b-4761-be18-2afc467f7be8",
+                    "type": "point",
+                    "x": 330,
+                    "y": 259.5
+                  }
+                ],
+                "id": "5ac8f9b0-1e0c-4724-88eb-b6f62905841b",
+                "type": "default",
+                "source": "593e850f-9cad-4014-b488-f1b61268f37c",
+                "sourcePort": "ckn0qoofi001o3a64r7vrzgjy",
+                "target": "a4aa3ade-0451-4260-af38-752b0e16de28",
+                "targetPort": "ckn0qoofn002g3a64g76wgv42",
+                "labels": [],
+                "width": 3,
+                "curvyness": 50
+              },
+              "04323fc1-5328-4679-931d-8eb50e2d8887": {
+                "points": [
+                  {
+                    "id": "4dfdc343-b649-4b40-852c-ed745dbe080c",
+                    "type": "point",
+                    "x": 264,
+                    "y": 314.5
+                  },
+                  {
+                    "id": "c9ab9235-35a2-4b0d-8a41-17f938d00cd3",
+                    "type": "point",
+                    "x": 330,
+                    "y": 259.5
+                  }
+                ],
+                "id": "04323fc1-5328-4679-931d-8eb50e2d8887",
+                "type": "default",
+                "source": "e396e411-31c9-4cb5-b47b-01c8f860f308",
+                "sourcePort": "ckn0qoofk001u3a64rxr0kocc",
+                "target": "a4aa3ade-0451-4260-af38-752b0e16de28",
+                "targetPort": "ckn0qoofn002g3a64g76wgv42",
+                "labels": [],
+                "width": 3,
+                "curvyness": 50
+              },
+              "38b99a58-6a45-4933-8312-031a6ff50fcc": {
+                "points": [
+                  {
+                    "id": "b4e2a0fe-1a5b-451d-9b13-e006b4e0cabd",
+                    "type": "point",
+                    "x": 484,
+                    "y": 259.5
+                  },
+                  {
+                    "id": "5367711a-8638-4c45-809a-e8f618062bc8",
+                    "type": "point",
+                    "x": 530,
+                    "y": 259.5
+                  }
+                ],
+                "id": "38b99a58-6a45-4933-8312-031a6ff50fcc",
+                "type": "default",
+                "source": "a4aa3ade-0451-4260-af38-752b0e16de28",
+                "sourcePort": "ckn0qoofn002i3a6436v0daqi",
+                "target": "ff65551d-12ee-4759-9b51-8341fa15249d",
+                "targetPort": "ckn0qoofw003g3a640yndtbmi",
+                "labels": [],
+                "width": 3,
+                "curvyness": 50
+              },
+              "fb491b64-14ef-4f78-b502-0887bdcc51cc": {
+                "points": [
+                  {
+                    "id": "73897b32-c0da-4944-afd5-33a65bdb8fe4",
+                    "type": "point",
+                    "x": 879,
+                    "y": 259.5
+                  },
+                  {
+                    "id": "c9c2398c-2021-43a2-a5b0-b268ac83cf22",
+                    "type": "point",
+                    "x": 920,
+                    "y": 259.5
+                  }
+                ],
+                "id": "fb491b64-14ef-4f78-b502-0887bdcc51cc",
+                "type": "default",
+                "source": "de63c35e-405c-4eaf-a5ee-abceaa0b59db",
+                "sourcePort": "ckn0qoofq002u3a64n72yh40f",
+                "target": "631da8ee-c510-46ad-ad82-9a89260b99c6",
+                "targetPort": "ckn0qooft00343a64cqko0qup",
+                "labels": [],
+                "width": 3,
+                "curvyness": 50
+              },
+              "3ca8278c-06b4-4a1e-93bb-88055be866b2": {
+                "points": [
+                  {
+                    "id": "ccc57142-7599-41eb-9dd3-d1d859afbd00",
+                    "type": "point",
+                    "x": 1077.44,
+                    "y": 259.5
+                  },
+                  {
+                    "id": "9441fe9a-2877-417e-836a-0e1ecb03a27e",
+                    "type": "point",
+                    "x": 1110,
+                    "y": 259.5
+                  }
+                ],
+                "id": "3ca8278c-06b4-4a1e-93bb-88055be866b2",
+                "type": "default",
+                "source": "631da8ee-c510-46ad-ad82-9a89260b99c6",
+                "sourcePort": "ckn0qooft00363a64eh5cz05o",
+                "target": "820e33f8-8f20-430b-bb5f-e9b500c61072",
+                "targetPort": "ckn0qoofl00243a64bk8pgqp3",
+                "labels": [],
+                "width": 3,
+                "curvyness": 50
+              },
+              "1e1e0a43-b71b-4381-886b-7cd1bd387a49": {
+                "points": [
+                  {
+                    "id": "0af3f49a-bf49-4b09-8eba-8a673d23a261",
+                    "type": "point",
+                    "x": 684,
+                    "y": 259.5
+                  },
+                  {
+                    "id": "b0b2967c-7a09-4820-845d-9334d621cdf0",
+                    "type": "point",
+                    "x": 725,
+                    "y": 259.5
+                  }
+                ],
+                "id": "1e1e0a43-b71b-4381-886b-7cd1bd387a49",
+                "type": "default",
+                "source": "ff65551d-12ee-4759-9b51-8341fa15249d",
+                "sourcePort": "ckn0qoofw003i3a64wjteh0ur",
+                "target": "de63c35e-405c-4eaf-a5ee-abceaa0b59db",
+                "targetPort": "ckn0qoofq002s3a64q62rsobs",
+                "labels": [],
+                "width": 3,
+                "curvyness": 50
+              }
+            }
+          },
+          {
+            "id": "5848f7d8-6b60-43f5-8cae-41c27064407c",
+            "type": "diagram-nodes",
+            "isSvg": false,
+            "transformed": true,
+            "models": {
+              "593e850f-9cad-4014-b488-f1b61268f37c": {
+                "id": "593e850f-9cad-4014-b488-f1b61268f37c",
+                "type": "debugSource",
+                "selected": false,
+                "x": 110,
+                "y": 165,
+                "ports": [
+                  {
+                    "id": "ckn0qoofi001o3a64r7vrzgjy",
+                    "type": "default",
+                    "x": 255.98,
+                    "y": 196.5,
+                    "name": "ckn0qoofi001p3a64ulikdxth",
+                    "parentNode": "593e850f-9cad-4014-b488-f1b61268f37c",
+                    "links": [
+                      "5ac8f9b0-1e0c-4724-88eb-b6f62905841b"
+                    ],
+                    "in": false,
+                    "groupIndex": null,
+                    "groupPath": null,
+                    "fieldLabel": "Output",
+                    "fieldPath": "data.nextNodes"
+                  }
+                ],
+                "data": {
+                  "payload": {
+                    "connectionId": "ckmwk7xdi007r0i6gd05z0j6y",
+                    "sandbox": true,
+                    "shipment": {
+                      "trackingNumber": "1Z220A810323708332"
+                    }
+                  },
+                  "nextNodes": [
+                    "a4aa3ade-0451-4260-af38-752b0e16de28"
+                  ]
+                },
+                "debug": {
+                  "breakpointEnabled": false
+                },
+                "name": "Source"
+              },
+              "e396e411-31c9-4cb5-b47b-01c8f860f308": {
+                "id": "e396e411-31c9-4cb5-b47b-01c8f860f308",
+                "type": "request",
+                "selected": false,
+                "x": 110,
+                "y": 275,
+                "ports": [
+                  {
+                    "id": "ckn0qoofk001u3a64rxr0kocc",
+                    "type": "default",
+                    "x": 256,
+                    "y": 306.5,
+                    "name": "ckn0qoofk001v3a64bnakz8wf",
+                    "parentNode": "e396e411-31c9-4cb5-b47b-01c8f860f308",
+                    "links": [
+                      "04323fc1-5328-4679-931d-8eb50e2d8887"
+                    ],
+                    "in": false,
+                    "groupIndex": null,
+                    "groupPath": null,
+                    "fieldLabel": "Payload",
+                    "fieldPath": "data.nextNodes"
+                  }
+                ],
+                "data": {
+                  "nextNodes": [
+                    "a4aa3ade-0451-4260-af38-752b0e16de28"
+                  ]
+                },
+                "debug": {
+                  "breakpointEnabled": false
+                },
+                "name": "Request"
+              },
+              "820e33f8-8f20-430b-bb5f-e9b500c61072": {
+                "id": "820e33f8-8f20-430b-bb5f-e9b500c61072",
+                "type": "response",
+                "selected": false,
+                "x": 1110,
+                "y": 220,
+                "ports": [
+                  {
+                    "id": "ckn0qoofl00243a64bk8pgqp3",
+                    "type": "default",
+                    "x": 1102,
+                    "y": 251.5,
+                    "name": "ckn0qoofl00253a6422kmvlyh",
+                    "parentNode": "820e33f8-8f20-430b-bb5f-e9b500c61072",
+                    "links": [
+                      "3ca8278c-06b4-4a1e-93bb-88055be866b2"
+                    ],
+                    "in": true,
+                    "fieldLabel": "Response"
+                  },
+                  {
+                    "id": "ckn0qoofm00263a64z7by7sny",
+                    "type": "default",
+                    "x": 1255.98,
+                    "y": 251.5,
+                    "name": "ckn0qoofm00273a648rvmcqzk",
+                    "parentNode": "820e33f8-8f20-430b-bb5f-e9b500c61072",
+                    "links": [],
+                    "in": false,
+                    "groupIndex": null,
+                    "groupPath": null,
+                    "fieldLabel": "Output",
+                    "fieldPath": "data.nextNodes"
+                  }
+                ],
+                "data": {
+                  "responseTransform": "$",
+                  "nextNodes": []
+                },
+                "debug": {
+                  "breakpointEnabled": false
+                },
+                "name": "Response"
+              },
+              "a4aa3ade-0451-4260-af38-752b0e16de28": {
+                "id": "a4aa3ade-0451-4260-af38-752b0e16de28",
+                "type": "setContext",
+                "selected": false,
+                "x": 330,
+                "y": 220,
+                "ports": [
+                  {
+                    "id": "ckn0qoofn002g3a64g76wgv42",
+                    "type": "default",
+                    "x": 322,
+                    "y": 251.5,
+                    "name": "ckn0qoofn002h3a64klx4zgwh",
+                    "parentNode": "a4aa3ade-0451-4260-af38-752b0e16de28",
+                    "links": [
+                      "5ac8f9b0-1e0c-4724-88eb-b6f62905841b",
+                      "04323fc1-5328-4679-931d-8eb50e2d8887"
+                    ],
+                    "in": true
+                  },
+                  {
+                    "id": "ckn0qoofn002i3a6436v0daqi",
+                    "type": "default",
+                    "x": 476,
+                    "y": 251.5,
+                    "name": "ckn0qoofn002j3a64hxfk2dll",
+                    "parentNode": "a4aa3ade-0451-4260-af38-752b0e16de28",
+                    "links": [
+                      "38b99a58-6a45-4933-8312-031a6ff50fcc"
+                    ],
+                    "in": false,
+                    "groupIndex": null,
+                    "groupPath": null,
+                    "fieldLabel": "Output",
+                    "fieldPath": "data.nextNodes"
+                  }
+                ],
+                "data": {
+                  "nextNodes": [
+                    "ff65551d-12ee-4759-9b51-8341fa15249d"
+                  ],
+                  "transform": "{\n  \"parameters\": $\n}"
+                },
+                "debug": {
+                  "breakpointEnabled": false
+                },
+                "name": "Set Context"
+              },
+              "de63c35e-405c-4eaf-a5ee-abceaa0b59db": {
+                "id": "de63c35e-405c-4eaf-a5ee-abceaa0b59db",
+                "type": "transform",
+                "selected": false,
+                "extras": {},
+                "x": 725,
+                "y": 220,
+                "ports": [
+                  {
+                    "id": "ckn0qoofq002s3a64q62rsobs",
+                    "type": "default",
+                    "x": 717,
+                    "y": 251.5,
+                    "name": "ckn0qoofq002t3a64k4e2tj0g",
+                    "parentNode": "de63c35e-405c-4eaf-a5ee-abceaa0b59db",
+                    "links": [
+                      "1e1e0a43-b71b-4381-886b-7cd1bd387a49"
+                    ],
+                    "in": true
+                  },
+                  {
+                    "id": "ckn0qoofq002u3a64n72yh40f",
+                    "type": "default",
+                    "x": 871,
+                    "y": 251.5,
+                    "name": "ckn0qoofq002v3a64lvm9qcha",
+                    "parentNode": "de63c35e-405c-4eaf-a5ee-abceaa0b59db",
+                    "links": [
+                      "fb491b64-14ef-4f78-b502-0887bdcc51cc"
+                    ],
+                    "in": false,
+                    "groupIndex": null,
+                    "groupPath": null,
+                    "fieldLabel": "Output",
+                    "fieldPath": "data.nextNodes"
+                  }
+                ],
+                "data": {
+                  "nextNodes": [
+                    "631da8ee-c510-46ad-ad82-9a89260b99c6"
+                  ],
+                  "transform": "$integrate({\n  \"request\": {\n    \"connectionId\": $state.context.parameters.connectionId,\n    \"options\": { \"returnErrors\": true },\n    \"payload\": [$state.context.request]\n  }\n}).request[0]",
+                  "transformBehavior": "destructive"
+                },
+                "debug": {
+                  "breakpointEnabled": false
+                },
+                "name": "Void Shipment",
+                "note": "Requires Deployment "
+              },
+              "631da8ee-c510-46ad-ad82-9a89260b99c6": {
+                "id": "631da8ee-c510-46ad-ad82-9a89260b99c6",
+                "type": "transform",
+                "selected": false,
+                "x": 920,
+                "y": 220,
+                "ports": [
+                  {
+                    "id": "ckn0qooft00343a64cqko0qup",
+                    "type": "default",
+                    "x": 912,
+                    "y": 251.5,
+                    "name": "ckn0qooft00353a6437qbjvoe",
+                    "parentNode": "631da8ee-c510-46ad-ad82-9a89260b99c6",
+                    "links": [
+                      "fb491b64-14ef-4f78-b502-0887bdcc51cc"
+                    ],
+                    "in": true
+                  },
+                  {
+                    "id": "ckn0qooft00363a64eh5cz05o",
+                    "type": "default",
+                    "x": 1069.44,
+                    "y": 251.5,
+                    "name": "ckn0qooft00373a64o5s86bv0",
+                    "parentNode": "631da8ee-c510-46ad-ad82-9a89260b99c6",
+                    "links": [
+                      "3ca8278c-06b4-4a1e-93bb-88055be866b2"
+                    ],
+                    "in": false,
+                    "groupIndex": null,
+                    "groupPath": null,
+                    "fieldLabel": "Output",
+                    "fieldPath": "data.nextNodes"
+                  }
+                ],
+                "data": {
+                  "nextNodes": [
+                    "820e33f8-8f20-430b-bb5f-e9b500c61072"
+                  ],
+                  "transform": "{\n  \"raw\": {\n    \"request\": $state.context.request,\n    \"response\": $\n  },\n  \"errors\": $isNilOrEmpty(Errors) ? undefined : [Errors.($omit($, [\"request\"]))],\n  \"error\": $not($isNilOrEmpty(Errors)),\n  \"request\": $state.context.parameters,\n  \"response\": {\n    \"success\": true\n  }\n}"
+                },
+                "debug": {
+                  "breakpointEnabled": false
+                },
+                "name": "Transform Response"
+              },
+              "ff65551d-12ee-4759-9b51-8341fa15249d": {
+                "id": "ff65551d-12ee-4759-9b51-8341fa15249d",
+                "type": "mergeContext",
+                "selected": false,
+                "x": 530,
+                "y": 220,
+                "ports": [
+                  {
+                    "id": "ckn0qoofw003g3a640yndtbmi",
+                    "type": "default",
+                    "x": 522,
+                    "y": 251.5,
+                    "name": "ckn0qoofw003h3a648o6kwffm",
+                    "parentNode": "ff65551d-12ee-4759-9b51-8341fa15249d",
+                    "links": [
+                      "38b99a58-6a45-4933-8312-031a6ff50fcc"
+                    ],
+                    "in": true
+                  },
+                  {
+                    "id": "ckn0qoofw003i3a64wjteh0ur",
+                    "type": "default",
+                    "x": 676,
+                    "y": 251.5,
+                    "name": "ckn0qoofw003j3a64lq8rbwzf",
+                    "parentNode": "ff65551d-12ee-4759-9b51-8341fa15249d",
+                    "links": [
+                      "1e1e0a43-b71b-4381-886b-7cd1bd387a49"
+                    ],
+                    "in": false,
+                    "groupIndex": null,
+                    "groupPath": null,
+                    "fieldLabel": "Output",
+                    "fieldPath": "data.nextNodes"
+                  }
+                ],
+                "data": {
+                  "transform": "{\n  \"request\": {\n    \"action\": \"DELETE\",\n    \"path\": \"/ship/v1/shipments/cancel/\" \n      /* UPS uses a dummy tracking number for testing the void shipment API against their CIE environment, since actual shipments aren't saved. */\n      & ($state.context.parameters.sandbox   \n        ? '1ZISDE016691676846' \n        : $state.context.parameters.shipment.trackingNumber),\n    \"version\": \"v1\"\n  }\n}\n",
+                  "nextNodes": [
+                    "de63c35e-405c-4eaf-a5ee-abceaa0b59db"
+                  ]
+                },
+                "debug": {
+                  "breakpointEnabled": false
+                },
+                "name": "Format Request"
+              }
+            }
+          }
+        ],
+        "name": "UPS - Void Shipment",
+        "type": "Integration",
+        "version": "0.0.1",
+        "walkthrough": {}
+      }
+    }
+  ],
+  "description": "Create Latest UPS - Void Shipment Version (8/10)"
+}

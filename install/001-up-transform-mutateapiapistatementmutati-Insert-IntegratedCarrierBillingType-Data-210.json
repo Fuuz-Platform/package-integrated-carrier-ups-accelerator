@@ -1,0 +1,42 @@
+{
+  "action": {
+    "up": {
+      "transform": "$mutate({\"api\":$api,\"statement\":'mutation($payload:[' & $type & 'CreatePayloadInput!]!){data:create' & $type & '(payload:$payload){id}}',\"variables\":{\"payload\":[$.{\"create\":$}]}}).data.id",
+      "bindings": {
+        "api": "application",
+        "type": "IntegratedCarrierBillingType"
+      }
+    },
+    "down": {
+      "transform": "$mutate({\"api\":$api,\"statement\":'mutation($payload:[' & $type & 'DeletePayloadInput!]!){delete' & $type & '(payload:$payload){id}}',\"variables\":{\"payload\":[$.{\"where\":{\"id\":id}}]}})",
+      "bindings": {
+        "api": "application",
+        "type": "IntegratedCarrierBillingType"
+      }
+    }
+  },
+  "payload": [
+    {
+      "id": "upsShipper",
+      "name": "UPS Shipper",
+      "code": "BillShipper",
+      "description": "The shipper of the package pays.",
+      "integratedCarrierId": "ups"
+    },
+    {
+      "id": "upsReceiver",
+      "name": "UPS Receiver",
+      "code": "BillReceiver",
+      "description": "The receiver of the package pays.",
+      "integratedCarrierId": "ups"
+    },
+    {
+      "id": "upsThirdParty",
+      "name": "UPS Third Party",
+      "code": "BillThirdParty",
+      "description": "A third-party account pays, i.e. for drop shipping or fulfillment.",
+      "integratedCarrierId": "ups"
+    }
+  ],
+  "description": "Insert IntegratedCarrierBillingType Data (2/10)"
+}

@@ -1,0 +1,42 @@
+{
+  "action": {
+    "up": {
+      "transform": "$mutate({\"api\":$api,\"statement\":'mutation($payload:[' & $type & 'CreatePayloadInput!]!){data:create' & $type & '(payload:$payload){id}}',\"variables\":{\"payload\":[$.{\"create\":$}]}}).data.id",
+      "bindings": {
+        "api": "application",
+        "type": "IntegratedCarrierService"
+      }
+    },
+    "down": {
+      "transform": "$mutate({\"api\":$api,\"statement\":'mutation($payload:[' & $type & 'DeletePayloadInput!]!){delete' & $type & '(payload:$payload){id}}',\"variables\":{\"payload\":[$.{\"where\":{\"id\":id}}]}})",
+      "bindings": {
+        "api": "application",
+        "type": "IntegratedCarrierService"
+      }
+    }
+  },
+  "payload": [
+    {
+      "id": "upsNextDayAir",
+      "name": "UPS Next Day Air",
+      "code": "01",
+      "description": "",
+      "integratedCarrierId": "ups"
+    },
+    {
+      "id": "upsSecondDayAir",
+      "name": "UPS Second Day Air",
+      "code": "02",
+      "description": "",
+      "integratedCarrierId": "ups"
+    },
+    {
+      "id": "upsGround",
+      "name": "UPS Ground",
+      "code": "03",
+      "description": "",
+      "integratedCarrierId": "ups"
+    }
+  ],
+  "description": "Insert IntegratedCarrierService Data (3/10)"
+}

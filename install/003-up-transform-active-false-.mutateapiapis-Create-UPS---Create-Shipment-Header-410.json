@@ -1,0 +1,27 @@
+{
+  "action": {
+    "up": {
+      "transform": "($ ~> | $ | { \"active\": false } |).($mutate({\"api\":$api,\"statement\":'mutation($payload:[' & $type & 'CreatePayloadInput!]!){data:create' & $type & '(payload:$payload){id}}',\"variables\":{\"payload\":[$.{\"create\":$}]}}).data.id)",
+      "bindings": {
+        "api": "application",
+        "type": "DataFlow"
+      }
+    },
+    "down": {
+      "transform": "$mutate({\"api\":$api,\"statement\":'mutation($payload:[' & $type & 'DeletePayloadInput!]!){delete' & $type & '(payload:$payload){id}}',\"variables\":{\"payload\":[$.{\"where\":{\"id\":id}}]}})",
+      "bindings": {
+        "api": "application",
+        "type": "DataFlow"
+      }
+    }
+  },
+  "payload": [
+    {
+      "id": "upsCreateShipment",
+      "name": "UPS - Create Shipment",
+      "description": "",
+      "dataFlowTypeId": "Integration"
+    }
+  ],
+  "description": "Create UPS - Create Shipment Header (4/10)"
+}

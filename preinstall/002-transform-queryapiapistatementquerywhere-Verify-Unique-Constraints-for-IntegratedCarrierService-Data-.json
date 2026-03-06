@@ -1,0 +1,24 @@
+{
+  "action": {
+    "transform": "$query({\"api\":$api,\"statement\":'query($where:' & $type & 'WhereInput!){data:' & $lowerFirst($type) & '(where:$where){total}}',\"variables\":{\"where\":{\"_or\":[$fields.{$:{\"_in\":[$lookup($$,$)]}}]}}}).data.total ? $throw(\"Could not verify unique fields for \" & $type & \" records.\")",
+    "bindings": {
+      "api": "application",
+      "type": "IntegratedCarrierService",
+      "fields": [
+        "id"
+      ]
+    }
+  },
+  "payload": [
+    {
+      "id": "upsGround"
+    },
+    {
+      "id": "upsNextDayAir"
+    },
+    {
+      "id": "upsSecondDayAir"
+    }
+  ],
+  "description": "Verify Unique Constraints for IntegratedCarrierService Data (3/6)"
+}

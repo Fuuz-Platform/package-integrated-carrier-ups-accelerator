@@ -1,0 +1,22 @@
+{
+  "action": {
+    "transform": "$query({\"api\":$api,\"statement\":'query($where:' & $type & 'WhereInput!){data:' & $lowerFirst($type) & '(where:$where){total}}',\"variables\":{\"where\":{\"_or\":[$fields.{$:{\"_in\":[$lookup($$,$)]}}]}}}).data.total ? $throw(\"Could not verify unique fields for \" & $type & \" records.\")",
+    "bindings": {
+      "api": "application",
+      "type": "DataFlow",
+      "fields": [
+        "id",
+        "name"
+      ]
+    }
+  },
+  "payload": [
+    {
+      "id": "upsCreateShipment",
+      "name": "UPS - Create Shipment",
+      "description": "",
+      "dataFlowTypeId": "Integration"
+    }
+  ],
+  "description": "Verify UPS - Create Shipment Doesn't Already Exist (4/6)"
+}

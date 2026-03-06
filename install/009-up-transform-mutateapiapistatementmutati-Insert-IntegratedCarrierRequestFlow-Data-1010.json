@@ -1,0 +1,33 @@
+{
+  "action": {
+    "up": {
+      "transform": "$mutate({\"api\":$api,\"statement\":'mutation($payload:[' & $type & 'CreatePayloadInput!]!){data:create' & $type & '(payload:$payload){id}}',\"variables\":{\"payload\":[$.{\"create\":$}]}}).data.id",
+      "bindings": {
+        "api": "application",
+        "type": "IntegratedCarrierRequestFlow"
+      }
+    },
+    "down": {
+      "transform": "$mutate({\"api\":$api,\"statement\":'mutation($payload:[' & $type & 'DeletePayloadInput!]!){delete' & $type & '(payload:$payload){id}}',\"variables\":{\"payload\":[$.{\"where\":{\"id\":id}}]}})",
+      "bindings": {
+        "api": "application",
+        "type": "IntegratedCarrierRequestFlow"
+      }
+    }
+  },
+  "payload": [
+    {
+      "id": "upsCreateShipment",
+      "integratedCarrierRequestTypeId": "createShipment",
+      "integratedCarrierId": "ups",
+      "dataFlowId": "upsCreateShipment"
+    },
+    {
+      "id": "upsVoidShipment",
+      "integratedCarrierRequestTypeId": "voidShipment",
+      "integratedCarrierId": "ups",
+      "dataFlowId": "upsVoidShipment"
+    }
+  ],
+  "description": "Insert IntegratedCarrierRequestFlow Data (10/10)"
+}
