@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Integrated Carrier UPS Package &mdash; Fuuz Accelerator</title>
+<meta name="description" content="Fuuz accelerator: UPS carrier integration â€” rate quote, label generation, void shipment">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://accelerators.fuuz.com/package-integrated-carrier-ups-accelerator/">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://accelerators.fuuz.com/package-integrated-carrier-ups-accelerator/">
+<meta property="og:site_name" content="Fuuz Accelerators">
+<meta property="og:title" content="Integrated Carrier UPS Package &mdash; Fuuz Accelerator">
+<meta property="og:description" content="Fuuz accelerator: UPS carrier integration â€” rate quote, label generation, void shipment">
+<link rel="icon" href="assets/appicon-violet.svg">
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="prose.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareSourceCode",
+  "name": "Integrated Carrier UPS Package",
+  "url": "https://accelerators.fuuz.com/package-integrated-carrier-ups-accelerator/",
+  "description": "Fuuz accelerator: UPS carrier integration \u00e2\u20ac\u201d rate quote, label generation, void shipment",
+  "codeRepository": "https://github.com/Fuuz-Platform/package-integrated-carrier-ups-accelerator",
+  "applicationCategory": "BusinessApplication",
+  "runtimePlatform": "Fuuz",
+  "author": {
+    "@type": "Organization",
+    "name": "Fuuz",
+    "url": "https://fuuz.com"
+  }
+}
+</script>
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap">
+    <a class="logo" href="../"><img src="assets/logo-horizontal-on-midnight.svg" alt="Fuuz"></a>
+    <span class="section">Accelerators</span>
+    <nav><a href="#overview">Overview</a><a href="#package-contents">Package Contents</a><a href="#seed-data-installed">Seed Data Installed</a><a href="https://github.com/Fuuz-Platform/package-integrated-carrier-ups-accelerator">GitHub</a></nav>
+  </div>
+</header>
+<main>
+<div class="wrap hero">
+  <p class="eyebrow">Accelerator &middot; Integration package</p>
+  <h1>Integrated Carrier UPS <span class="accent">Package</span></h1>
+  <p class="lede">Fuuz accelerator: UPS carrier integration â€” rate quote, label generation, void shipment</p>
+  <div class="ctas">
+    <a class="cta cta-primary" href="https://github.com/Fuuz-Platform/package-integrated-carrier-ups-accelerator">Get the package</a>
+    <a class="cta cta-secondary" href="../">All accelerators</a>
+  </div>
+</div>
+<section>
+  <div class="wrap prose">
+<p><strong>Version:</strong> 0.0.2
+<strong>Spec Version:</strong> 2.0.0</p>
+<hr />
+<h2 id="overview">Overview</h2>
+<p>This package adds UPS carrier support to the Integrated Carrier suite. It seeds UPS-specific reference data (carrier record, service levels, billing types), installs UPS-specific data flows for rate quoting and label generation via the UPS Developer API, and registers those flows with the <code>Integrated Carrier Router</code> so they are automatically dispatched when UPS is selected as the carrier.</p>
+<hr />
+<h2 id="package-contents">Package Contents</h2>
+<pre><code>integrated-carrier-ups/
+├── manifest.json
+├── package-data.json
+├── install/                     10 install steps
+├── preinstall/                  6 preinstall verification steps
+└── postinstall/                 2 postinstall registration steps
+</code></pre>
+<hr />
+<h2 id="seed-data-installed">Seed Data Installed</h2>
+<h3>IntegratedCarrier</h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Name</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ups</code></td>
+<td>UPS</td>
+</tr>
+</tbody>
+</table></div>
+<h3>IntegratedCarrierService (UPS service levels)</h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Service</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>UPS Ground</td>
+</tr>
+<tr>
+<td>UPS 2nd Day Air</td>
+</tr>
+<tr>
+<td>UPS Next Day Air</td>
+</tr>
+<tr>
+<td>UPS Next Day Air Saver</td>
+</tr>
+<tr>
+<td>UPS 3 Day Select</td>
+</tr>
+<tr>
+<td>UPS Worldwide Expedited</td>
+</tr>
+<tr>
+<td>Additional UPS services (added by install steps)</td>
+</tr>
+</tbody>
+</table></div>
+<h3>IntegratedCarrierBillingType (UPS billing options)</h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Shipper (bill to sender account)</td>
+</tr>
+<tr>
+<td>Receiver (bill to recipient account)</td>
+</tr>
+<tr>
+<td>Third Party (bill to a third-party account)</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2 id="installed-flows">Installed Flows</h2>
+<h3>UPS Rate Quote (<code>Integration</code>)</h3>
+<p>Submits a shipment request to the UPS Rating API and returns available service rates:
+- Formats the <code>IntegratedCarrierRequest</code> payload into UPS Rate API request structure (JSON)
+- Authenticates via UPS OAuth 2.0 Client Credentials using the configured <code>IntegratedCarrierAccount</code>
+- Calls UPS REST Rates and Service endpoint
+- Parses response and returns normalized rate options with transit times, service levels, and pricing
+- Handles UPS API error codes and warning messages</p>
+<h3>UPS Label Generation (<code>Integration</code>)</h3>
+<p>Generates a UPS shipping label and tracking number:
+- Authenticates via UPS OAuth 2.0
+- Submits shipment to UPS Ship endpoint with package details, service level, and billing type
+- Returns label image (GIF for thermal via ZPL conversion, or PDF), tracking number, and confirmation
+- Stores response and tracking number in <code>IntegratedCarrierRequest</code>
+- Triggers <code>Integrated Carrier Print Labels Standard</code> flow for label printing</p>
+<h3>UPS Void Shipment (<code>Integration</code>)</h3>
+<p>Voids a previously generated UPS label:
+- Calls UPS Void Shipment endpoint with the tracking number
+- Updates <code>IntegratedCarrierRequest</code> status to voided
+- Returns void confirmation status</p>
+<h3>Supporting flows (7 additional)</h3>
+<p>OAuth token management (UPS token caching and refresh), End-of-Day pickup request, tracking status query, UPS Access Point lookup, and international shipment handling.</p>
+<hr />
+<h2 id="install-process">Install Process</h2>
+<p><strong>Preinstall (6 steps):</strong> Verifies uniqueness of the <code>IntegratedCarrier</code> (UPS), <code>IntegratedCarrierBillingType</code> records, <code>IntegratedCarrierService</code> records, and UPS flow IDs before installing.</p>
+<p><strong>Install (10 steps):</strong> Creates all seed data records and flow headers; creates and deploys flow versions.</p>
+<p><strong>Postinstall (2 steps):</strong>
+1. Creates <code>IntegratedCarrierRequestFlow</code> records linking UPS + Rate Quote → UPS Rate Quote flow; UPS + Label Generation → UPS Label Generation flow; etc.
+2. Verifies router can resolve UPS handler flows</p>
+<hr />
+<h2 id="installation">Installation</h2>
+<ol>
+<li>Install the core suite first: <code>package-integrated-carrier-core-schema-accelerator</code>, <code>package-integrated-carrier-core-flows-accelerator</code>, <code>package-integrated-carrier-core-screens-accelerator</code></li>
+<li>Import this package via Fuuz Package Manager</li>
+<li>Create an <code>IntegratedCarrierAccount</code> record for UPS with your account number and API credentials</li>
+<li>Create an <code>IntegratedCarrierConnectionConfiguration</code> record pointing to the UPS API endpoint</li>
+<li>Test using the Integrated Carrier Shipment screen with UPS selected and a valid address</li>
+</ol>
+<hr />
+<h2 id="dependencies">Dependencies</h2>
+<ul>
+<li><strong><code>package-integrated-carrier-core-schema-accelerator</code></strong> — required</li>
+<li><strong><code>package-integrated-carrier-core-flows-accelerator</code></strong> — required</li>
+<li><strong>UPS Developer Account</strong> with OAuth 2.0 API credentials — <a href="https://developer.ups.com">UPS Developer Portal</a></li>
+<li>UPS Production or Customer Integration Environment (CIE) credentials</li>
+</ul>
+<hr />
+<h2 id="part-of-the-integrated-carrier-suite">Part of the Integrated Carrier Suite</h2>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Package</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>integrated-carrier-core-schema</code></td>
+<td>Data models</td>
+</tr>
+<tr>
+<td><code>integrated-carrier-core-flows</code></td>
+<td>Router and print flows</td>
+</tr>
+<tr>
+<td><code>integrated-carrier-core-screens</code></td>
+<td>Shipment management screens</td>
+</tr>
+<tr>
+<td><code>integrated-carrier-fedex</code></td>
+<td>FedEx seed data and label flows</td>
+</tr>
+<tr>
+<td><strong>integrated-carrier-ups</strong> (this)</td>
+<td>UPS seed data and label flows</td>
+</tr>
+<tr>
+<td><code>integrated-carrier-addon-plex</code></td>
+<td>Plex ERP integration extension</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<p><em>Built on the <a href="https://fuuz.com">Fuuz Industrial Operations Platform</a></em></p>
+  </div>
+</section>
+</main>
+<footer>
+  <div class="wrap">
+    <p>Fuuz&reg; is an Enterprise Industrial Intelligence Platform.
+      <a href="https://accelerators.fuuz.com/">All accelerators</a> &middot;
+      <a href="https://github.com/Fuuz-Platform/package-integrated-carrier-ups-accelerator">Source</a> &middot;
+      <a href="https://fuuz.com">fuuz.com</a></p>
+  </div>
+</footer>
+</body>
+</html>
